@@ -1,22 +1,25 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { statements, DimensionKey, BigFiveKey, dimensionsData, resolveDimensionKey, computeDimensionScore, getBand, INTEGRITY_KEY } from './data/statements';
 import { useAuth } from './auth/AuthContext';
 import { useFeedback } from './ui/Feedback';
 import { track } from './utils/track';
 import DisclaimerBanner from './components/DisclaimerBanner';
 import LandingPage from './components/LandingPage';
-import BigFiveOverview from './components/BigFiveOverview';
-import Questionnaire from './components/Questionnaire';
-import Results from './components/Results';
-import ConsistencyReview from './components/ConsistencyReview';
-import InterviewPrep from './components/InterviewPrep';
-import NotesSection from './components/NotesSection';
-import JobAnalysis from './components/JobAnalysis';
-import InterviewSimulator from './components/InterviewSimulator';
-import PriorityPractice from './components/PriorityPractice';
 import CreditPurchase from './components/CreditPurchase';
-import LegalView from './components/LegalView';
 import { useDialog } from './hooks/useDialog';
+
+// Ikke-landingsside-seksjoner lastes først når brukeren navigerer dit. Holder
+// den initielle bunten (som mobil-førstegangsbesøkende laster) mye mindre.
+const BigFiveOverview = lazy(() => import('./components/BigFiveOverview'));
+const Questionnaire = lazy(() => import('./components/Questionnaire'));
+const Results = lazy(() => import('./components/Results'));
+const ConsistencyReview = lazy(() => import('./components/ConsistencyReview'));
+const InterviewPrep = lazy(() => import('./components/InterviewPrep'));
+const NotesSection = lazy(() => import('./components/NotesSection'));
+const JobAnalysis = lazy(() => import('./components/JobAnalysis'));
+const InterviewSimulator = lazy(() => import('./components/InterviewSimulator'));
+const PriorityPractice = lazy(() => import('./components/PriorityPractice'));
+const LegalView = lazy(() => import('./components/LegalView'));
 import personvernMd from '@/docs/PERSONVERN.md?raw';
 import vilkarMd from '@/docs/VILKAR.md?raw';
 
@@ -614,9 +617,16 @@ export default function App() {
         tabIndex={-1}
         className="flex-1 pb-16 print:hidden"
       >
-        
+        <Suspense
+          fallback={
+            <div className="max-w-md mx-auto py-20 flex items-center justify-center gap-2 text-slate-400 text-sm">
+              <span className="w-4 h-4 border-2 border-slate-300 border-t-teal-600 rounded-full animate-spin" />
+              Laster …
+            </div>
+          }
+        >
         {activeTab === 'home' && (
-          <LandingPage 
+          <LandingPage
             onStart={() => navigateToTab('questionnaire')}
             onViewOverview={() => navigateToTab('theory')}
             completedCount={answeredCount}
@@ -820,6 +830,7 @@ export default function App() {
             </div>
           </div>
         )}
+        </Suspense>
 
       </main>
 
@@ -1062,10 +1073,12 @@ export default function App() {
       {/* Legal documents (privacy / terms) shown full-screen */}
       {legalView && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto print:hidden">
-          <LegalView
-            source={legalView === 'personvern' ? personvernMd : vilkarMd}
-            onBack={() => setLegalView(null)}
-          />
+          <Suspense fallback={<div className="py-20 text-center text-slate-400 text-sm">Laster …</div>}>
+            <LegalView
+              source={legalView === 'personvern' ? personvernMd : vilkarMd}
+              onBack={() => setLegalView(null)}
+            />
+          </Suspense>
         </div>
       )}
 

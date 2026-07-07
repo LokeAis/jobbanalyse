@@ -470,6 +470,7 @@ const TRACKABLE_EVENTS = new Set([
   "test_completed",
   "job_analysis_run",
   "interview_started",
+  "client_error",
 ]);
 
 app.post("/api/track", rateLimit, async (req, res) => {

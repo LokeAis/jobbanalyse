@@ -6,6 +6,22 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        output: {
+          // Skill de tunge, sjelden-endrede avhengighetene ut i egne chunks. De
+          // lastes parallelt med app-koden OG beholder cachen på tvers av deployer
+          // (endrer vi bare app-koden, slipper brukeren å laste ned firebase/react
+          // på nytt). NB: matcher '/react/' med slash foran, så 'lucide-react'
+          // havner IKKE her.
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return;
+            if (id.includes('/firebase/') || id.includes('/@firebase/')) return 'firebase';
+            if (/\/react(-dom)?\//.test(id) || id.includes('/scheduler/')) return 'react-vendor';
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
