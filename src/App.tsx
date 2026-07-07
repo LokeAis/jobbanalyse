@@ -245,26 +245,29 @@ export default function App() {
     localStorage.setItem('bigfive_prep_notes', JSON.stringify(updatedNotes));
   };
 
+  // Snapshot dagens skårer (til "Sammenlign med forrige forsøk" i Results.tsx).
+  // Returnerer JSON for den oppdaterte historikken, eller null hvis testen ikke
+  // var fullført — da er det ingenting meningsfullt å lagre.
+  const snapshotScoreHistory = (): string | null => {
+    if (!isQuestionnaireComplete) return null;
+    const allKeys: DimensionKey[] = [...(Object.keys(dimensionsData) as BigFiveKey[]), INTEGRITY_KEY];
+    const snapshot: ScoreSnapshot = {
+      date: new Date().toISOString(),
+      scores: Object.fromEntries(allKeys.map((k) => [k, computeDimensionScore(k, answers)])),
+    };
+    let history: ScoreSnapshot[] = [];
+    try {
+      history = JSON.parse(localStorage.getItem('bigfive_prep_score_history') || '[]');
+    } catch {
+      history = [];
+    }
+    return JSON.stringify([snapshot, ...history].slice(0, SCORE_HISTORY_LIMIT));
+  };
+
   // 3. Clear data and reset
   const handleResetAllData = () => {
-    // Snapshot dagens skårer FØR vi tømmer noe, slik at "Sammenlign med forrige
-    // forsøk" i Results.tsx har noe å vise etter neste gjennomføring. Kun hvis
-    // testen faktisk var fullført — ellers er det ingenting meningsfullt å lagre.
-    let nextHistoryJson: string | null = null;
-    if (isQuestionnaireComplete) {
-      const allKeys: DimensionKey[] = [...(Object.keys(dimensionsData) as BigFiveKey[]), INTEGRITY_KEY];
-      const snapshot: ScoreSnapshot = {
-        date: new Date().toISOString(),
-        scores: Object.fromEntries(allKeys.map((k) => [k, computeDimensionScore(k, answers)])),
-      };
-      let history: ScoreSnapshot[] = [];
-      try {
-        history = JSON.parse(localStorage.getItem('bigfive_prep_score_history') || '[]');
-      } catch {
-        history = [];
-      }
-      nextHistoryJson = JSON.stringify([snapshot, ...history].slice(0, SCORE_HISTORY_LIMIT));
-    }
+    // Snapshot FØR vi tømmer noe.
+    const nextHistoryJson = snapshotScoreHistory();
     STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
     // Fjern også egen sikkerhetskopi, ellers kommer "slettet" data tilbake ved neste innlogging.
     if (user) STORAGE_KEYS.forEach((key) => localStorage.removeItem(bucketKey(key, user.uid)));
@@ -274,6 +277,32 @@ export default function App() {
     setNotes({});
     setActiveTab('home');
     setShowResetConfirm(false);
+  };
+
+  // 3x. Retake: nullstill KUN selve testen (svar, rekkefølge, gjetninger, modus,
+  // onboarding-flagg) — notater, jobbanalyser og samtykke beholdes. Profilen
+  // snapshottes først så brukeren kan sammenligne forsøkene etterpå.
+  const handleRetake = async () => {
+    const ok = await confirm({
+      title: 'Ta testen på nytt?',
+      message:
+        'Svarene dine nullstilles slik at du kan gjennomføre en fersk generalprøve. Profilen fra dette forsøket lagres, så du kan sammenligne resultatene etterpå. Notater og lagrede jobbanalyser beholdes.',
+      confirmLabel: 'Start ny gjennomføring',
+      cancelLabel: 'Avbryt',
+    });
+    if (!ok) return;
+    const nextHistoryJson = snapshotScoreHistory();
+    const TEST_KEYS = [
+      'bigfive_prep_answers',
+      'bigfive_prep_shuffled_ids',
+      'bigfive_prep_guesses',
+      'bigfive_prep_mode',
+      'bigfive_prep_confirmed_context',
+    ];
+    TEST_KEYS.forEach((k) => localStorage.removeItem(k));
+    if (nextHistoryJson) localStorage.setItem('bigfive_prep_score_history', nextHistoryJson);
+    setAnswers({});
+    navigateToTab('questionnaire'); // Questionnaire mountes ferskt og starter onboarding på nytt
   };
 
   // 3a. GDPR: delete server account (Firestore-data + Firebase Auth) + local data.
@@ -607,9 +636,10 @@ export default function App() {
         )}
 
         {activeTab === 'results' && (
-          <Results 
+          <Results
             answers={answers}
             onNavigateToTab={navigateToTab}
+            onRetake={handleRetake}
           />
         )}
 

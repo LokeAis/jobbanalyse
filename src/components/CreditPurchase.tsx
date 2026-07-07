@@ -89,7 +89,7 @@ export default function CreditPurchase({
           Kjøp av klipp åpner snart. Ta kontakt om du trenger flere klipp i mellomtiden.
         </p>
       )}
-      <div className={compact ? 'space-y-2' : 'grid sm:grid-cols-3 gap-3'}>
+      <div className={compact ? 'space-y-2' : 'grid sm:grid-cols-2 lg:grid-cols-4 gap-3'}>
       {packages.map((pkg) => {
         const perClip = Math.round(pkg.amountNok / pkg.credits);
         return (

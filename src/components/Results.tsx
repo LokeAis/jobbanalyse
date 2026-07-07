@@ -6,9 +6,11 @@ import { useFeedback } from '../ui/Feedback';
 interface ResultsProps {
   answers: Record<string, number>;
   onNavigateToTab: (tabId: string) => void;
+  /** Nullstiller kun testen (med bekreftelse) og starter en ny gjennomføring. */
+  onRetake: () => void;
 }
 
-export default function Results({ answers, onNavigateToTab }: ResultsProps) {
+export default function Results({ answers, onNavigateToTab, onRetake }: ResultsProps) {
   const { toast } = useFeedback();
   const [activeDimKey, setActiveDimKey] = useState<BigFiveKey>('planmessighet');
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -145,23 +147,33 @@ export default function Results({ answers, onNavigateToTab }: ResultsProps) {
             Bruk denne rapporten til å forstå dine naturlige styrker og fallgruver på jobb, og bli tryggere før intervjuet.
           </p>
         </div>
-        <button
-          onClick={handleExportPdf}
-          disabled={isExportingPdf}
-          className="shrink-0 mx-auto md:mx-0 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isExportingPdf ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              Genererer PDF...
-            </>
-          ) : (
-            <>
-              <Download className="w-4 h-4" />
-              Last ned profil (PDF)
-            </>
-          )}
-        </button>
+        <div className="shrink-0 mx-auto md:mx-0 flex items-center gap-2">
+          <button
+            onClick={handleExportPdf}
+            disabled={isExportingPdf}
+            className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isExportingPdf ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Genererer PDF...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Last ned profil (PDF)
+              </>
+            )}
+          </button>
+          <button
+            onClick={onRetake}
+            className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-2"
+            title="Nullstill svarene og gjennomfør generalprøven på nytt — denne profilen lagres for sammenligning"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Ta testen på nytt
+          </button>
+        </div>
       </div>
 
       {/* Visible Disclaimer */}

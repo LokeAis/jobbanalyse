@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { statements, DimensionKey, computeDimensionScore, getBand } from '../data/statements';
-import { MessageSquare, Send, RefreshCw, Lock, ArrowRight, Bot, User, ShieldAlert, Sparkles, Ticket, Download } from 'lucide-react';
+import { MessageSquare, Send, RefreshCw, Lock, ArrowRight, Bot, User, ShieldAlert, Sparkles, Ticket, Download, Flag } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import CreditPurchase from './CreditPurchase';
 import AiConsentNotice, { hasAiConsent } from './AiConsentNotice';
@@ -49,7 +49,12 @@ export default function InterviewSimulator({ answers, onNavigateToTab }: Intervi
     return result;
   };
 
-  const sendTurn = async (nextMessages: ChatMessage[], sessionToken: string | null, restoreOnError?: string) => {
+  const sendTurn = async (
+    nextMessages: ChatMessage[],
+    sessionToken: string | null,
+    restoreOnError?: string,
+    forceEnd?: boolean
+  ) => {
     setLoading(true);
     setError(null);
 
@@ -79,7 +84,9 @@ export default function InterviewSimulator({ answers, onNavigateToTab }: Intervi
       }
 
       setSession(data.session ?? null);
-      setTurnsLeft(typeof data.turnsLeft === 'number' ? data.turnsLeft : null);
+      // Ved bevisst avslutning låser vi økten uansett gjenstående turer, så
+      // tilbakemeldingen blir det siste ordet.
+      setTurnsLeft(forceEnd ? 0 : typeof data.turnsLeft === 'number' ? data.turnsLeft : null);
       setMessages([...nextMessages, { role: 'assistant', content: data.reply }]);
     } catch (err: any) {
       setError(typeof err?.message === 'string' && err.message.trim() ? err.message : 'Noe gikk galt. Prøv igjen.');
@@ -104,6 +111,13 @@ export default function InterviewSimulator({ answers, onNavigateToTab }: Intervi
     if (!text || loading || (turnsLeft !== null && turnsLeft <= 0)) return;
     setInput('');
     sendTurn([...messages, { role: 'user', content: text }], session, text);
+  };
+
+  const handleFinish = () => {
+    if (loading || !started || messages.length === 0 || (turnsLeft !== null && turnsLeft <= 0)) return;
+    const text =
+      'Kan du avslutte intervjuet nå med en kort, ærlig oppsummering: mine tydeligste styrker, 2–3 konkrete forbedringspunkter, og ett råd jeg kan ta med til det ekte intervjuet?';
+    sendTurn([...messages, { role: 'user', content: text }], session, undefined, true);
   };
 
   const handleRestart = () => {
@@ -290,7 +304,7 @@ export default function InterviewSimulator({ answers, onNavigateToTab }: Intervi
           <div className="border-t border-slate-100 p-3 sm:p-4">
             {sessionEnded && (
               <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs sm:text-sm text-amber-900 flex items-center justify-between gap-3">
-                <span>Denne intervjuøkten er ferdig. Start en ny for å fortsette (1 klipp).</span>
+                <span>Intervjuøkten er avsluttet. Start en ny for å øve mer (1 klipp).</span>
                 <button
                   onClick={handleStart}
                   className="shrink-0 bg-teal-700 hover:bg-teal-800 text-white font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer"
@@ -298,6 +312,17 @@ export default function InterviewSimulator({ answers, onNavigateToTab }: Intervi
                   Nytt intervju
                 </button>
               </div>
+            )}
+            {!sessionEnded && messages.length > 0 && (
+              <button
+                onClick={handleFinish}
+                disabled={loading}
+                className="mb-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-100 rounded-lg py-2 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Be rekruttereren avslutte med en oppsummering av styrker og forbedringspunkter"
+              >
+                <Flag className="w-3.5 h-3.5" />
+                Avslutt og få tilbakemelding
+              </button>
             )}
             <div className="flex items-end gap-2">
               <textarea

@@ -23,7 +23,7 @@ ansvarlig for å oppgi riktig e-postadresse og for all aktivitet på kontoen din
 ## 3. Klippekort («klipp»)
 - Test, profil og notater er **gratis**. AI-funksjonene koster **klipp**.
 - **1 klipp = én AI-jobbanalyse _eller_ ett øvingsintervju (én økt).**
-- Priser vises i checkout og er inkl. mva.: **1 klipp 49 kr · 3 klipp 99 kr · 10 klipp 249 kr**.
+- Priser vises i checkout og er inkl. mva.: **1 klipp 49 kr · 3 klipp 99 kr · 10 klipp 249 kr · 20 klipp 399 kr**.
 - Klipp utløper ikke så lenge kontoen din er aktiv, kan ikke overføres til andre og kan ikke løses inn i kontanter.
 - Et klipp regnes som **brukt** når en analyse-/intervjuøkt er startet og levert fra API-et.
 

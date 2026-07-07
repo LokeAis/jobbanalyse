@@ -6,7 +6,7 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import { initializeApp, cert, applicationDefault, getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getFirestore, FieldValue, FieldPath } from "firebase-admin/firestore";
 import Stripe from "stripe";
 import helmet from "helmet";
 import cors from "cors";
@@ -461,7 +461,10 @@ app.get("/api/credit-packages", (_req, res) => {
 // restricted to a fixed allow-list so the endpoint can't be used to write arbitrary
 // fields. Purchases are counted for free inside grantCreditsIdempotent() below —
 // no client call needed for that event.
-const todayKey = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+// YYYY-MM-DD etter norsk kalenderdag (Europe/Oslo), så statistikk-døgnet skifter
+// ved midnatt norsk tid i stedet for kl. 01/02 om natten (UTC).
+const todayKey = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Oslo" }).format(new Date());
 const TRACKABLE_EVENTS = new Set([
   "test_started",
   "test_completed",
@@ -485,6 +488,40 @@ app.post("/api/track", rateLimit, async (req, res) => {
     console.error("track failed:", e);
     // Never let a tracking hiccup surface as a user-facing error.
     res.json({ ok: false });
+  }
+});
+
+// Read the aggregate analytics (admin-only). Guarded by the same shared secret as
+// the top-up endpoint. Returns the last 30 days + totals so the funnel can be read
+// without clicking through the Firebase Console.
+//   curl -H "x-admin-secret: <ADMIN_TOPUP_SECRET>" <url>/api/admin/analytics
+app.get("/api/admin/analytics", rateLimit, async (req, res) => {
+  const secret = process.env.ADMIN_TOPUP_SECRET;
+  const provided = req.headers["x-admin-secret"];
+  if (!secret || typeof provided !== "string" || !safeEqual(provided, secret)) {
+    return res.status(403).json({ error: "Ikke autorisert." });
+  }
+  if (!ensureFirebase()) {
+    return res.status(503).json({ error: "Firebase ikke konfigurert." });
+  }
+  try {
+    const snap = await getFirestore()
+      .collection("analyticsDaily")
+      .orderBy(FieldPath.documentId(), "desc")
+      .limit(30)
+      .get();
+    const days = snap.docs.map((d) => ({ date: d.id, ...d.data() }));
+    const totals: Record<string, number> = {};
+    for (const day of days) {
+      for (const [k, v] of Object.entries(day)) {
+        if (k === "date") continue;
+        if (typeof v === "number") totals[k] = (totals[k] ?? 0) + v;
+      }
+    }
+    res.json({ days, totals });
+  } catch (e) {
+    console.error("admin analytics failed:", e);
+    res.status(500).json({ error: "Kunne ikke hente statistikk." });
   }
 });
 
